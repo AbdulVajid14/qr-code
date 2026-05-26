@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 
@@ -7,7 +6,7 @@ const API = import.meta.env.VITE_API_URL;
 function timeAgo(ts) {
   const diff = Date.now() - new Date(ts).getTime();
   const m = Math.floor(diff / 60000);
-  if (m < 1)  return "just now";
+  if (m < 1) return "just now";
   if (m < 60) return `${m}m ago`;
   const h = Math.floor(m / 60);
   if (h < 24) return `${h}h ago`;
@@ -15,21 +14,25 @@ function timeAgo(ts) {
 }
 
 export default function QRManager() {
-  const [qrList,   setQrList]   = useState([]);
+  const [qrList, setQrList] = useState([]);
   const [selected, setSelected] = useState(null);
   const [editDest, setEditDest] = useState("");
-  const [newName,  setNewName]  = useState("");
-  const [newDest,  setNewDest]  = useState("");
-  const [loading,  setLoading]  = useState(false);
-  const [toast,    setToast]    = useState("");
-  const [error,    setError]    = useState("");
+  const [newName, setNewName] = useState("");
+  const [newDest, setNewDest] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [toast, setToast] = useState("");
+  const [error, setError] = useState("");
   const [libReady, setLibReady] = useState(false);
   const canvasRef = useRef(null);
 
   useEffect(() => {
-    if (window.QRCode) { setLibReady(true); return; }
+    if (window.QRCode) {
+      setLibReady(true);
+      return;
+    }
     const s = document.createElement("script");
-    s.src = "https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js";
+    s.src =
+      "https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js";
     s.async = true;
     s.onload = () => setLibReady(true);
     document.head.appendChild(s);
@@ -40,11 +43,11 @@ export default function QRManager() {
     canvasRef.current.innerHTML = "";
     try {
       new window.QRCode(canvasRef.current, {
-        text:         `${API}/qr/${selected.qr_key}`,
-        width:        200,
-        height:       200,
-        colorDark:    "#000000",
-        colorLight:   "#ffffff",
+        text: `${API}/qr/${selected.qr_key}`,
+        width: 200,
+        height: 200,
+        colorDark: "#000000",
+        colorLight: "#ffffff",
         correctLevel: window.QRCode.CorrectLevel.H,
       });
     } catch {
@@ -52,28 +55,29 @@ export default function QRManager() {
     }
   }, [selected, libReady]);
 
-async function fetchAll() {
-  try {
-    const res = await axios.get(`${API}/api/qr`);
+  async function fetchAll() {
+    try {
+      const res = await axios.get(`${API}/api/qr`);
 
-    console.log(res.data);
+      console.log(res.data);
 
-    if (Array.isArray(res.data)) {
-      setQrList(res.data);
-    } else if (Array.isArray(res.data.data)) {
-      setQrList(res.data.data);
-    } else {
+      if (Array.isArray(res.data)) {
+        setQrList(res.data);
+      } else if (Array.isArray(res.data.data)) {
+        setQrList(res.data.data);
+      } else {
+        setQrList([]);
+      }
+    } catch (err) {
+      console.log(err);
+      showToast("Failed to load QR codes");
       setQrList([]);
     }
-
-  } catch (err) {
-    console.log(err);
-    showToast("Failed to load QR codes");
-    setQrList([]);
   }
-}
 
-  useEffect(() => { fetchAll(); }, []);
+  useEffect(() => {
+    fetchAll();
+  }, []);
 
   function showToast(msg) {
     setToast(msg);
@@ -88,8 +92,14 @@ async function fetchAll() {
 
   async function handleCreate() {
     setError("");
-    if (!newName.trim()) { setError("Enter a name."); return; }
-    if (!newDest.trim()) { setError("Enter a destination URL."); return; }
+    if (!newName.trim()) {
+      setError("Enter a name.");
+      return;
+    }
+    if (!newDest.trim()) {
+      setError("Enter a destination URL.");
+      return;
+    }
     setLoading(true);
     try {
       await axios.post(`${API}/api/qr`, {
@@ -109,13 +119,20 @@ async function fetchAll() {
 
   async function handleUpdate() {
     if (!selected) return;
-    if (!editDest.trim()) { setError("Destination cannot be empty."); return; }
+    if (!editDest.trim()) {
+      setError("Destination cannot be empty.");
+      return;
+    }
     setLoading(true);
     try {
-      await axios.put(`${API}/api/qr/${selected.qr_key}`, { destination: editDest.trim() });
+      await axios.put(`${API}/api/qr/${selected.qr_key}`, {
+        destination: editDest.trim(),
+      });
       const updated = { ...selected, destination: editDest.trim() };
       setSelected(updated);
-      setQrList(prev => prev.map(q => q.qr_key === selected.qr_key ? updated : q));
+      setQrList((prev) =>
+        prev.map((q) => (q.qr_key === selected.qr_key ? updated : q)),
+      );
       showToast("URL updated ✓");
       setError("");
     } catch {
@@ -140,30 +157,28 @@ async function fetchAll() {
 
       {toast && <div style={styles.toast}>{toast}</div>}
 
+      {/* ✅ CHANGED: Product name updated to "Ektova Link" */}
       <header style={styles.header}>
-        <span style={styles.logo}>▦ QR Dynamic</span>
-        <span style={styles.badge}>Dynamic · Editable</span>
+        <span style={styles.logo}>▦ Ektova QR Generator</span>
       </header>
 
       <div style={styles.body}>
-
         {/* LEFT — List + Create */}
         <div style={styles.sidebar}>
-
           <div style={styles.card}>
             <p style={styles.sectionLabel}>New QR Code</p>
             <input
               style={styles.input}
               placeholder="Name  (e.g. My Portfolio)"
               value={newName}
-              onChange={e => setNewName(e.target.value)}
+              onChange={(e) => setNewName(e.target.value)}
             />
             <input
               style={{ ...styles.input, fontFamily: "monospace", fontSize: 12 }}
               placeholder="Destination URL"
               value={newDest}
-              onChange={e => setNewDest(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && handleCreate()}
+              onChange={(e) => setNewDest(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleCreate()}
             />
             {error && <p style={styles.error}>{error}</p>}
             <button
@@ -178,18 +193,23 @@ async function fetchAll() {
 
           <div style={styles.listWrap}>
             <p style={styles.sectionLabel}>
-              All QR Codes {qrList.length > 0 && <span style={styles.count}>{qrList.length}</span>}
+              All QR Codes{" "}
+              {qrList.length > 0 && (
+                <span style={styles.count}>{qrList.length}</span>
+              )}
             </p>
             {qrList.length === 0 ? (
               <p style={styles.emptyText}>No QR codes yet.</p>
             ) : (
               Array.isArray(qrList) &&
-qrList.map(entry => (
+              qrList.map((entry) => (
                 <div
                   key={entry.qr_key}
                   style={{
                     ...styles.listItem,
-                    ...(selected?.qr_key === entry.qr_key ? styles.listItemActive : {}),
+                    ...(selected?.qr_key === entry.qr_key
+                      ? styles.listItemActive
+                      : {}),
                   }}
                   onClick={() => selectQr(entry)}
                   className="qr-list-item"
@@ -214,31 +234,39 @@ qrList.map(entry => (
             <div style={styles.emptyPreview}>
               <div style={styles.emptyIcon}>▦</div>
               <p style={styles.emptyTitle}>Select a QR code</p>
-              <p style={styles.emptyHint}>Pick one from the list to view and update its destination URL</p>
+              <p style={styles.emptyHint}>
+                Pick one from the list to view and update its destination URL
+              </p>
             </div>
           ) : (
             <div style={styles.previewInner}>
-
               <div style={styles.previewHeader}>
                 <span style={styles.previewName}>{selected.name}</span>
-                <span style={styles.dynBadge}>DYNAMIC</span>
               </div>
 
               <div style={styles.qrCard}>
                 <div ref={canvasRef} style={{ lineHeight: 0 }} />
-                <p style={styles.qrUrl}>{API}/qr/{selected.qr_key}</p>
+                <p style={styles.qrUrl}>
+                  {API}/qr/{selected.qr_key}
+                </p>
               </div>
 
               <div style={styles.updateCard}>
                 <p style={styles.sectionLabel}>Current Destination</p>
                 <p style={styles.currentDest}>{selected.destination}</p>
 
-                <p style={{ ...styles.sectionLabel, marginTop: 16 }}>Update Destination URL</p>
+                <p style={{ ...styles.sectionLabel, marginTop: 16 }}>
+                  Update Destination URL
+                </p>
                 <input
-                  style={{ ...styles.input, fontFamily: "monospace", fontSize: 12 }}
+                  style={{
+                    ...styles.input,
+                    fontFamily: "monospace",
+                    fontSize: 12,
+                  }}
                   value={editDest}
-                  onChange={e => setEditDest(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && handleUpdate()}
+                  onChange={(e) => setEditDest(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleUpdate()}
                   placeholder="New destination URL"
                 />
                 {error && <p style={styles.error}>{error}</p>}
@@ -261,12 +289,15 @@ qrList.map(entry => (
               </button>
 
               <div style={styles.infoBox}>
-                <p style={styles.infoTitle}>How it works</p>
+                {/* ✅ CHANGED: Info box references "Ektova Link" instead of generic branding */}
+                <p style={styles.infoTitle}>How Ektova Link works</p>
                 <p style={styles.infoText}>
                   The printed QR always points to{" "}
-                  <code style={styles.code}>{API}/qr/{selected.qr_key}</code>, which
-                  redirects to your destination. Update the URL above anytime — no
-                  reprinting needed.
+                  <code style={styles.code}>
+                    {API}/qr/{selected.qr_key}
+                  </code>
+                  , which redirects to your destination. Update the URL above
+                  anytime — no reprinting needed.
                 </p>
               </div>
             </div>
@@ -405,23 +436,43 @@ const styles = {
   },
   listItemActive: { border: "1.5px solid #000", background: "#f7f7f7" },
   listIcon: {
-    width: 34, height: 34, borderRadius: 8,
-    background: "#000", color: "#fff",
-    display: "flex", alignItems: "center", justifyContent: "center",
-    fontSize: 14, flexShrink: 0,
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    background: "#000",
+    color: "#fff",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 14,
+    flexShrink: 0,
   },
   listInfo: { flex: 1, minWidth: 0 },
   listName: {
-    fontSize: 13, fontWeight: 600, color: "#111", margin: 0,
-    whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+    fontSize: 13,
+    fontWeight: 600,
+    color: "#111",
+    margin: 0,
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
   },
   listDest: {
-    fontSize: 11, color: "#999", margin: "2px 0 0",
-    whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+    fontSize: 11,
+    color: "#999",
+    margin: "2px 0 0",
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
     fontFamily: "monospace",
   },
   listTime: { fontSize: 11, color: "#bbb", flexShrink: 0 },
-  emptyText: { fontSize: 13, color: "#bbb", textAlign: "center", padding: "20px 0" },
+  emptyText: {
+    fontSize: 13,
+    color: "#bbb",
+    textAlign: "center",
+    padding: "20px 0",
+  },
   preview: {
     flex: 1,
     display: "flex",
@@ -433,75 +484,122 @@ const styles = {
   },
   emptyPreview: { textAlign: "center", maxWidth: 280 },
   emptyIcon: {
-    width: 80, height: 80, borderRadius: 16,
+    width: 80,
+    height: 80,
+    borderRadius: 16,
     border: "2px dashed #ccc",
-    display: "flex", alignItems: "center", justifyContent: "center",
-    fontSize: 32, color: "#ccc", margin: "0 auto 16px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 32,
+    color: "#ccc",
+    margin: "0 auto 16px",
   },
-  emptyTitle: { fontSize: 16, fontWeight: 600, color: "#555", margin: "0 0 6px" },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: 600,
+    color: "#555",
+    margin: "0 0 6px",
+  },
   emptyHint: { fontSize: 13, color: "#aaa", lineHeight: 1.5, margin: 0 },
   previewInner: {
-    display: "flex", flexDirection: "column",
-    alignItems: "center", gap: 16,
-    width: "100%", maxWidth: 340,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: 16,
+    width: "100%",
+    maxWidth: 340,
   },
   previewHeader: { display: "flex", alignItems: "center", gap: 8 },
   previewName: { fontSize: 16, fontWeight: 700, color: "#111" },
   dynBadge: {
-    fontSize: 10, fontWeight: 700,
-    padding: "2px 8px", borderRadius: 99,
-    background: "#000", color: "#fff", letterSpacing: "0.05em",
+    fontSize: 10,
+    fontWeight: 700,
+    padding: "2px 8px",
+    borderRadius: 99,
+    background: "#000",
+    color: "#fff",
+    letterSpacing: "0.05em",
   },
   qrCard: {
     background: "#fff",
     border: "1px solid #e5e5e5",
     borderRadius: 16,
     padding: 20,
-    display: "flex", flexDirection: "column",
-    alignItems: "center", gap: 12,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: 12,
     width: "100%",
     boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
   },
   qrUrl: {
-    fontSize: 11, color: "#aaa", fontFamily: "monospace",
-    textAlign: "center", wordBreak: "break-all", margin: 0,
+    fontSize: 11,
+    color: "#aaa",
+    fontFamily: "monospace",
+    textAlign: "center",
+    wordBreak: "break-all",
+    margin: 0,
   },
   updateCard: {
     background: "#fff",
     border: "1px solid #e5e5e5",
-    borderRadius: 12, padding: 16,
-    width: "100%", display: "flex",
-    flexDirection: "column", gap: 10,
+    borderRadius: 12,
+    padding: 16,
+    width: "100%",
+    display: "flex",
+    flexDirection: "column",
+    gap: 10,
     boxSizing: "border-box",
   },
   currentDest: {
-    fontSize: 12, color: "#555", fontFamily: "monospace",
-    background: "#f5f5f5", border: "1px solid #e5e5e5",
-    borderRadius: 6, padding: "6px 10px",
-    wordBreak: "break-all", margin: 0,
+    fontSize: 12,
+    color: "#555",
+    fontFamily: "monospace",
+    background: "#f5f5f5",
+    border: "1px solid #e5e5e5",
+    borderRadius: 6,
+    padding: "6px 10px",
+    wordBreak: "break-all",
+    margin: 0,
   },
   infoBox: {
-    background: "#fff", border: "1px solid #e5e5e5",
-    borderRadius: 12, padding: 14,
-    width: "100%", boxSizing: "border-box",
+    background: "#fff",
+    border: "1px solid #e5e5e5",
+    borderRadius: 12,
+    padding: 14,
+    width: "100%",
+    boxSizing: "border-box",
   },
   infoTitle: {
-    fontSize: 11, fontWeight: 700, color: "#111",
+    fontSize: 11,
+    fontWeight: 700,
+    color: "#111",
     margin: "0 0 4px",
-    textTransform: "uppercase", letterSpacing: "0.06em",
+    textTransform: "uppercase",
+    letterSpacing: "0.06em",
   },
   infoText: { fontSize: 12, color: "#777", lineHeight: 1.6, margin: 0 },
   code: {
-    fontFamily: "monospace", background: "#f0f0f0",
-    padding: "1px 5px", borderRadius: 4, fontSize: 11,
+    fontFamily: "monospace",
+    background: "#f0f0f0",
+    padding: "1px 5px",
+    borderRadius: 4,
+    fontSize: 11,
   },
   toast: {
-    position: "fixed", bottom: 24, left: "50%",
+    position: "fixed",
+    bottom: 24,
+    left: "50%",
     transform: "translateX(-50%)",
-    background: "#000", color: "#fff",
-    padding: "10px 20px", borderRadius: 99,
-    fontSize: 13, fontWeight: 600,
-    zIndex: 1000, pointerEvents: "none",
+    background: "#000",
+    color: "#fff",
+    padding: "10px 20px",
+    borderRadius: 99,
+    fontSize: 13,
+    fontWeight: 600,
+    zIndex: 1000,
+    pointerEvents: "none",
     boxShadow: "0 4px 20px rgba(0,0,0,0.25)",
   },
 };
