@@ -52,14 +52,26 @@ export default function QRManager() {
     }
   }, [selected, libReady]);
 
-  async function fetchAll() {
-    try {
-      const { data } = await axios.get(`${API}/api/qr`);
-      setQrList(data);
-    } catch {
-      showToast("Failed to load QR codes");
+async function fetchAll() {
+  try {
+    const res = await axios.get(`${API}/api/qr`);
+
+    console.log(res.data);
+
+    if (Array.isArray(res.data)) {
+      setQrList(res.data);
+    } else if (Array.isArray(res.data.data)) {
+      setQrList(res.data.data);
+    } else {
+      setQrList([]);
     }
+
+  } catch (err) {
+    console.log(err);
+    showToast("Failed to load QR codes");
+    setQrList([]);
   }
+}
 
   useEffect(() => { fetchAll(); }, []);
 
@@ -171,7 +183,8 @@ export default function QRManager() {
             {qrList.length === 0 ? (
               <p style={styles.emptyText}>No QR codes yet.</p>
             ) : (
-              qrList.map(entry => (
+              Array.isArray(qrList) &&
+qrList.map(entry => (
                 <div
                   key={entry.qr_key}
                   style={{
