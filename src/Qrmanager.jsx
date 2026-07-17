@@ -303,7 +303,52 @@ function ContactForm({ data, onChange }) {
   );
 }
 
-function MiniQR({ qrKey, libReady }) {
+function buildQrContent(entry) {
+  switch (entry.type) {
+    case "website":
+      return entry.destination || "";
+
+    case "maps":
+      return entry.maps_link || "";
+
+    case "email": {
+      const params = new URLSearchParams();
+      if (entry.email_subject) params.set("subject", entry.email_subject);
+      if (entry.email_body)    params.set("body", entry.email_body);
+      const qs = params.toString() ? `?${params.toString()}` : "";
+      return `mailto:${entry.email_to}${qs}`;
+    }
+
+    case "contact": {
+      const c = entry.contact || {};
+      const lines = [
+        "BEGIN:VCARD",
+        "VERSION:3.0",
+        `FN:${c.first_name} ${c.last_name}`.trim(),
+        `N:${c.last_name};${c.first_name};;;`,
+      ];
+      if (c.organization)   lines.push(`ORG:${c.organization}`);
+      if (c.job_title)      lines.push(`TITLE:${c.job_title}`);
+      if (c.phone_personal) lines.push(`TEL;TYPE=CELL:${c.phone_personal}`);
+      if (c.phone_work)     lines.push(`TEL;TYPE=WORK:${c.phone_work}`);
+      if (c.email)          lines.push(`EMAIL:${c.email}`);
+      if (c.website)        lines.push(`URL:${c.website}`);
+      if (c.location)       lines.push(`ADR;TYPE=HOME:;;${c.location};;;;`);
+      if (c.birthday)       lines.push(`BDAY:${c.birthday.replace(/-/g, "")}`);
+      const noteStr = [
+        c.blood_group ? `Blood Group: ${c.blood_group}` : "",
+        c.notes || "",
+      ].filter(Boolean).join(" | ");
+      if (noteStr) lines.push(`NOTE:${noteStr}`);
+      lines.push("END:VCARD");
+      return lines.join("\r\n");
+    }
+
+    default:
+      return `${API}/qr/${entry.qr_key}`;
+  }
+}
+function MiniQR({ entry, libReady }) {
   const ref = useRef(null);
 
   useEffect(() => {
@@ -311,7 +356,7 @@ function MiniQR({ qrKey, libReady }) {
     ref.current.innerHTML = "";
     try {
       new window.QRCode(ref.current, {
-        text: `${API}/qr/${qrKey}`,
+        text: buildQrContent(entry),          // ← was `${API}/qr/${qrKey}`
         width: 34,
         height: 34,
         colorDark: "#000000",
@@ -321,13 +366,10 @@ function MiniQR({ qrKey, libReady }) {
     } catch {
       /* silent */
     }
-  }, [qrKey, libReady]);
+  }, [entry, libReady]);
 
   return (
-    <div
-      ref={ref}
-      className="w-[34px] h-[34px] rounded-lg overflow-hidden shrink-0 bg-white border border-gray-200 flex items-center justify-center leading-[0]"
-    />
+    <div ref={ref} className="w-[34px] h-[34px] rounded-lg overflow-hidden shrink-0 bg-white border border-gray-200 flex items-center justify-center leading-[0]" />
   );
 }
 
@@ -563,22 +605,22 @@ export default function QRManager() {
     document.head.appendChild(s);
   }, []);
 
-  useEffect(() => {
-    if (!selected || !libReady || !canvasRef.current || !window.QRCode) return;
-    canvasRef.current.innerHTML = "";
-    try {
-      new window.QRCode(canvasRef.current, {
-        text: `${API}/qr/${selected.qr_key}`,
-        width: 200,
-        height: 200,
-        colorDark: "#000000",
-        colorLight: "#ffffff",
-        correctLevel: window.QRCode.CorrectLevel.H,
-      });
-    } catch {
-      /* silent */
-    }
-  }, [selected, libReady]);
+useEffect(() => {
+  if (!selected || !libReady || !canvasRef.current || !window.QRCode) return;
+  canvasRef.current.innerHTML = "";
+  try {
+    new window.QRCode(canvasRef.current, {
+      text: buildQrContent(selected),          // ← was `${API}/qr/${selected.qr_key}`
+      width: 200,
+      height: 200,
+      colorDark: "#000000",
+      colorLight: "#ffffff",
+      correctLevel: window.QRCode.CorrectLevel.H,
+    });
+  } catch {
+    /* silent */
+  }
+}, [selected, libReady]);
 
   async function fetchAll() {
     try {
@@ -904,7 +946,7 @@ export default function QRManager() {
                     setUpdateError("");
                   }}
                 >
-                  <MiniQR qrKey={entry.qr_key} libReady={libReady} />
+                  <MiniQR entry={entry} libReady={libReady} />   
 
                   <div className="flex-1 min-w-0">
                     <p className="text-[13px] font-semibold text-gray-900 m-0 truncate">
